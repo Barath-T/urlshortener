@@ -1,74 +1,47 @@
 use std::collections::HashMap;
 
+use crate::database_handler::UrlCollection;
+use crate::url_data::UrlData;
+
 use base62;
 
-pub struct Data {
-    id: u64,
-    shortened_url: String,
-    original_url: String,
-    no_of_uses: u64,
-    expiration_date: String,
-    max_no_of_uses: u64
-
-}
 
 pub struct RequestObject {
     header: HashMap<String, String>,
     body: HashMap<String,String>,
 }
 
-pub fn get_record(shortened_url: &str) -> Result<Data,String> {
-    Err("Not Implemented".to_owned())
-}
 
-pub fn delete_record(shortened_url: &str) -> Result<(),String> {
-    Err("Not Implemented".to_owned())
-}
 
-pub fn modify_record(shortened_url: &str, data: &Data) -> Result<(),String>  {
-    Err("Not Implemented".to_owned())
-}
+pub async fn handle_get(request_object: &mut RequestObject, db: UrlCollection) -> Result< String,&str> {
 
-pub fn insert_record(data: &Data) -> Result<(),String> {
-    Err("Not Implemented".to_owned())
-}
-
-pub fn get_last_id() -> Result<u64, String> {
-    Err("Not Implemented".to_owned())
-}
-
-pub fn handle_get(request_object: &mut RequestObject) -> Result< String,&str> {
-
-    let shortened_url = match request_object.body.get("shorteneed_url") {
+    let shortened_url = match request_object.body.get("short_url") {
         Some(v) => v,
         None => "^()^#",
     };
     if shortened_url == "^()^#" {
         return Err("No shortened url found");
     }
-    let mut data = get_record(shortened_url).expect("No Record found");
-    if data.no_of_uses == data.max_no_of_uses {
-        delete_record(shortened_url).expect("Cannot Delete Record");
+    let short_url = base62::decode(shortened_url).unwrap() as i64;
+    let mut data = db.get_url_data(short_url).
+                                    await.expect("Cannot get data").
+                                    or(Err("No records found")?).unwrap();
+    let original_url = data.original_url.clone();
+    match data.uses_left {
+        Some(v) => if v==1 { db.delete_url_data(short_url);} else { data.uses_left= Some(data.uses_left.unwrap() - 1);db.modify_url_data(short_url, data );} 
+        None => {}
     }
-    else {
-        data.no_of_uses = data.no_of_uses + 1;
-        modify_record(shortened_url, &data).expect("Cannot Modify Record");
-    }
-    Ok(data.original_url)
+    
+    Ok(original_url)
 
 }
 
-pub fn handle_post(request_object: &mut RequestObject) -> Result<(), &str> {
-    let new_id = match get_last_id() {
+pub async fn handle_post(request_object: &mut RequestObject, db: UrlCollection) -> Result<(), &str> {
+    let new_id = match db.get_new_id().await {
         Ok(v) => v + 1,
-        Err(e) => if e ==  "No Records".to_string() {
-                100000000000_u64
-            }
-            else {
-                Err("Cannot Get Last Id or create one")?
-            },
+        _ =>  Err("Cannot Get Last Id or create one")?,
     };
-    let shortened_url = base62::encode(new_id);
+    let short_url = new_id;
     let original_url = match request_object.body.get("original_url") {
         Some(v) => v.to_owned(),
         None => Err("Original URL not found in request body")?,
@@ -77,18 +50,16 @@ pub fn handle_post(request_object: &mut RequestObject) -> Result<(), &str> {
         Some(v) => v.to_owned(),
         None => Err("Expiration Date not found in request body")?,
     };
-    let max_no_of_uses = match request_object.body.get("max_no_of_uses") {
-        Some(v) => v.parse::<u64>().unwrap(),
-        None => Err("Maximum number of uses not found in request body")?,
+    let uses_left = match request_object.body.get("uses_left") {
+        Some(v) => Some(v.parse::<i32>().unwrap()),
+        None => None,
     };
-    insert_record(&Data { 
-        id: new_id, 
-        shortened_url: shortened_url, 
+    db.insert_url_data(UrlData { 
+        short_url: short_url, 
         original_url: original_url, 
-        no_of_uses: 0, 
+        uses_left: uses_left,
         expiration_date: expiration_date, 
-        max_no_of_uses: max_no_of_uses  
-    }).expect("Cannot insert record");
+    }).await.expect("Cannot insert record");
     Ok(())
 
 }

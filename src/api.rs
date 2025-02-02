@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use base62;
 
-struct Data {
+pub struct Data {
     id: u64,
     shortened_url: String,
     original_url: String,
@@ -10,7 +12,7 @@ struct Data {
 
 }
 
-struct RequestObject {
+pub struct RequestObject {
     header: HashMap<String, String>,
     body: HashMap<String,String>,
 }
@@ -23,11 +25,11 @@ pub fn delete_record(shortened_url: &str) -> Result<(),String> {
     Err("Not Implemented".to_owned())
 }
 
-pub fn modify_record(shortened_url: &str, data: Data) -> Result<(),String>  {
+pub fn modify_record(shortened_url: &str, data: &Data) -> Result<(),String>  {
     Err("Not Implemented".to_owned())
 }
 
-pub fn insert_record(data: Data) -> Result<(),String> {
+pub fn insert_record(data: &Data) -> Result<(),String> {
     Err("Not Implemented".to_owned())
 }
 
@@ -50,9 +52,9 @@ pub fn handle_get(request_object: &mut RequestObject) -> Result< String,&str> {
     }
     else {
         data.no_of_uses = data.no_of_uses + 1;
-        modify_record(shortened_url, data).expect("Cannot Modify Record");
+        modify_record(shortened_url, &data).expect("Cannot Modify Record");
     }
-    Ok(shortened_url.to_owned())
+    Ok(data.original_url)
 
 }
 
@@ -79,7 +81,7 @@ pub fn handle_post(request_object: &mut RequestObject) -> Result<(), &str> {
         Some(v) => v.parse::<u64>().unwrap(),
         None => Err("Maximum number of uses not found in request body")?,
     };
-    insert_record(Data { 
+    insert_record(&Data { 
         id: new_id, 
         shortened_url: shortened_url, 
         original_url: original_url, 

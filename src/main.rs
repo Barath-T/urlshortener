@@ -29,8 +29,8 @@ fn main() {
                 Err(err) => {
                     eprintln!("{:?}", err);
                     continue;
-                },
-                _ => ()
+                }
+                _ => (),
             },
         }
     }

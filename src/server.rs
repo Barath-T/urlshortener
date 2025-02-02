@@ -1,7 +1,4 @@
-use std::io::{BufReader, Read};
 use std::net::{TcpListener, TcpStream};
-
-use crate::request::Request;
 
 pub struct Server {
     listener: TcpListener,
@@ -9,7 +6,7 @@ pub struct Server {
 
 impl Server {
     pub fn new(addr: &str) -> Server {
-        let listener: TcpListener = TcpListener::bind(addr).unwrap();
+        let listener: TcpListener = TcpListener::bind(addr).expect("Unable to bind to the addr");
 
         Server { listener }
     }

@@ -1,4 +1,3 @@
-use mongodb::bson::DateTime;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -7,6 +6,6 @@ pub struct UrlData {
 	pub short_url: u64,
 	pub original_url: String,
 	pub uses_left: Option<i32>,
-	pub expiration_date: DateTime
+	pub expiration_date: String
 }
 

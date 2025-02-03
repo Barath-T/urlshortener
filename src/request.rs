@@ -22,6 +22,7 @@ pub enum RequestType {
 pub struct Request {
     stream: TcpStream,
     pub req_type: RequestType,
+    pub query: String,
     pub path: String,
     pub headers: String,
     pub body: Option<HashMap<String, String>>,
@@ -29,10 +30,11 @@ pub struct Request {
 
 impl Request {
     pub fn new(request_stream: TcpStream) -> Result<Self, RequestError> {
-        let (req_type, path, headers, body) = Self::parse(&request_stream)?;
+        let (req_type, path, headers, query, body) = Self::parse(&request_stream)?;
 
         Ok(Self {
             stream: request_stream,
+            query,
             path,
             req_type,
             headers,
@@ -68,7 +70,7 @@ impl Request {
     }
     fn parse(
         req: &TcpStream,
-    ) -> Result<(RequestType, String, String, Option<HashMap<String, String>>), RequestError> {
+    ) -> Result<(RequestType, String, String, String, Option<HashMap<String, String>>), RequestError> {
         let mut bufreader: BufReader<TcpStream> = BufReader::new(match req.try_clone() {
             Ok(stream) => stream,
             Err(err) => return Err(RequestError::StreamError(err.to_string())),
@@ -102,6 +104,9 @@ impl Request {
                 ))
             }
         };
+        println!("{}", &path);
+        let  (path, queries) = path.split_once('?').unwrap();
+        let (_, query) = queries.split_once('=').unwrap();
 
         let mut request_line: String = String::new();
 
@@ -150,6 +155,6 @@ impl Request {
             });
         }
 
-        Ok((req_type, path.to_string(), headers, body))
+        Ok((req_type, path.to_string(), headers, query.to_string(), body))
     }
 }
